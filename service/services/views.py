@@ -4,6 +4,7 @@ from clients.models import Client
 from services.serializers import SubscriptionSerializer
 from django.db.models import Prefetch
 from services.models import Subscription
+from django.db.models import F, Sum
 
 
 class SubscriptionView(ReadOnlyModelViewSet):
@@ -14,7 +15,7 @@ class SubscriptionView(ReadOnlyModelViewSet):
                 queryset=Client.objects.all().select_related('user').only(
                     'company_name', 'user__email'
                     ))
-        ) # do 3 requests to db
+        ).annotate(price=F('service__full_price') - F('service__full_price') * F('plan__discount_percent') / 100.00) # add price field on the db lvl. It`s better to annotate something, then send request to db 
 
     # Do 1 request but with JOIN
     # queryset = Subscription.objects.all().select_related('plan', 'client', 'client__user').only(
@@ -24,3 +25,15 @@ class SubscriptionView(ReadOnlyModelViewSet):
     # )
     serializer_class = SubscriptionSerializer
     
+
+    def list(self, request, *args, **kwargs): # По дефолту тут обрабатывается запрос и формируется ответ нашему клиенту
+        queryset = self.filter_queryset(self.get_queryset())
+
+        response = super().list(request, *args, **kwargs)
+
+        response_data = {'result': response.data} # Better not to do that 
+        response_data['total_amount'] = queryset.aggregate(total=Sum('price')).get('total') # It`s better to aggregate on db lvl. We can do that on this lvl because we annotate on the db lvl too
+        response.data = response_data
+
+        return response 
+        
