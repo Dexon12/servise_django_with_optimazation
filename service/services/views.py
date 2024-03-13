@@ -15,8 +15,7 @@ class SubscriptionView(ReadOnlyModelViewSet):
                 queryset=Client.objects.all().select_related('user').only(
                     'company_name', 'user__email'
                     ))
-        ).annotate(price=F('service__full_price') - F('service__full_price') * F('plan__discount_percent') / 100.00) # add price field on the db lvl. It`s better to annotate something, then send request to db 
-
+        ) 
     # Do 1 request but with JOIN
     # queryset = Subscription.objects.all().select_related('plan', 'client', 'client__user').only(
     #     'client__user__email',

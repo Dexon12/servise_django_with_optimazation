@@ -1,7 +1,9 @@
+from typing import Any, Iterable
 from django.db import models
 from django.core.validators import MaxValueValidator
 
 from clients.models import Client
+from services.tasks import set_price
 
 
 class Service(models.Model):
@@ -11,6 +13,17 @@ class Service(models.Model):
     def __str__(self) -> str:
         return f'{self.name}'
 
+    def __init__(self, *args: Any, **kwargs: Any): # Решение плохое, но оно работает :)
+        super().__init__(*args, **kwargs)
+        self.__full_price = self.full_price # В момент создания сохранили значение текущего состояния скидки
+
+    def save(self, *args, **kwargs):
+        if self.full_price != self.__full_price: # Если текущий процент скидки не равен прошлому то меняется
+            for subscuprion in self.subscriptions.all():
+                set_price.delay(subscuprion.id)
+
+
+        return super().save(*args, **kwargs)
 class Plan(models.Model):
     PLAN_TYPES = (
         ('full', 'Full'),
@@ -23,11 +36,24 @@ class Plan(models.Model):
 
     def __str__(self) -> str:
         return f'{self.plan_type}'
+    
+    def __init__(self, *args: Any, **kwargs: Any): # Решение плохое, но оно работает :)
+        super().__init__(*args, **kwargs)
+        self.__discount_percent = self.discount_percent # В момент создания сохранили значение текущего состояния скидки
+
+    def save(self, *args, **kwargs):
+        if self.discount_percent != self.__discount_percent: # Если текущий процент скидки не равен прошлому то меняется
+            for subscuprion in self.subscriptions.all():
+                set_price.delay(subscuprion.id)
+
+
+        return super().save(*args, **kwargs)
 
 class Subscription(models.Model):
     client = models.ForeignKey(Client, related_name='subscriptions', on_delete=models.PROTECT)
     service = models.ForeignKey(Service, related_name='subscriptions', on_delete=models.PROTECT)
     plan = models.ForeignKey(Plan, related_name='subscriptions', on_delete=models.PROTECT)
+    price = models.PositiveIntegerField(default=0)
 
     def __str__(self) -> str:
         return f'Client: {self.client} | Service: {self.service} | Plan: {self.plan}'
