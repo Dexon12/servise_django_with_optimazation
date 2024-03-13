@@ -12,7 +12,5 @@ app.conf.broker_url = settings.CELERY_BROKER_URL
 app.autodiscover_tasks() # Чтобы celery смотрел по всем папкам и автоматом подгружал таски
 
 
-@app.task()
-def debug_task():
-    time.sleep(20)
-    print('Hello from debug task')
+
+

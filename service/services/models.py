@@ -3,7 +3,7 @@ from django.db import models
 from django.core.validators import MaxValueValidator
 
 from clients.models import Client
-from services.tasks import set_price
+from services.tasks import set_comment, set_price
 
 
 class Service(models.Model):
@@ -21,6 +21,7 @@ class Service(models.Model):
         if self.full_price != self.__full_price: # Если текущий процент скидки не равен прошлому то меняется
             for subscuprion in self.subscriptions.all():
                 set_price.delay(subscuprion.id)
+                set_comment.delay(subscuprion.id)
 
 
         return super().save(*args, **kwargs)
@@ -45,7 +46,7 @@ class Plan(models.Model):
         if self.discount_percent != self.__discount_percent: # Если текущий процент скидки не равен прошлому то меняется
             for subscuprion in self.subscriptions.all():
                 set_price.delay(subscuprion.id)
-
+                set_comment.delay(subscuprion.id)
 
         return super().save(*args, **kwargs)
 
@@ -54,6 +55,7 @@ class Subscription(models.Model):
     service = models.ForeignKey(Service, related_name='subscriptions', on_delete=models.PROTECT)
     plan = models.ForeignKey(Plan, related_name='subscriptions', on_delete=models.PROTECT)
     price = models.PositiveIntegerField(default=0)
+    comment = models.CharField(max_length=55, default='')
 
     def __str__(self) -> str:
         return f'Client: {self.client} | Service: {self.service} | Plan: {self.plan}'
