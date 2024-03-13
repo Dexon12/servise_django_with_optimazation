@@ -1,8 +1,11 @@
 from typing import Any, Iterable
 from django.db import models
 from django.core.validators import MaxValueValidator
+from django.db.models.signals import post_delete
+
 
 from clients.models import Client
+from services.recievers import delete_cache_total_sum
 from services.tasks import set_comment, set_price
 
 
@@ -59,3 +62,12 @@ class Subscription(models.Model):
 
     def __str__(self) -> str:
         return f'Client: {self.client} | Service: {self.service} | Plan: {self.plan}'
+
+    def save(self, *args, **kwargs):
+        creating = not bool(self.id)
+        result = super().save(*args, **kwargs)
+        if creating:
+            set_price.delay(self.id)
+        return result
+    
+post_delete.connect(delete_cache_total_sum, sender=Subscription)

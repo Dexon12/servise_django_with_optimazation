@@ -5,7 +5,8 @@ from services.serializers import SubscriptionSerializer
 from django.db.models import Prefetch
 from services.models import Subscription
 from django.db.models import F, Sum
-
+from django.core.cache import cache
+from django.conf import settings
 
 class SubscriptionView(ReadOnlyModelViewSet):
     queryset = Subscription.objects.all().prefetch_related(
@@ -27,11 +28,17 @@ class SubscriptionView(ReadOnlyModelViewSet):
 
     def list(self, request, *args, **kwargs): # По дефолту тут обрабатывается запрос и формируется ответ нашему клиенту
         queryset = self.filter_queryset(self.get_queryset())
-
         response = super().list(request, *args, **kwargs)
+        price_cache = cache.get(settings.PRICE_CACHE_NAME)
+
+        if price_cache:
+            total_price = price_cache
+        else:
+            total_price = queryset.aggregate(total=Sum('price')).get('total') # It`s better to aggregate on db lvl. We can do that on this lvl because we annotate on the db lvl too
+            cache.set(settings.PRICE_CACHE_NAME, total_price, 60 * 60)
 
         response_data = {'result': response.data} # Better not to do that 
-        response_data['total_amount'] = queryset.aggregate(total=Sum('price')).get('total') # It`s better to aggregate on db lvl. We can do that on this lvl because we annotate on the db lvl too
+        response_data['total_amount'] = total_price
         response.data = response_data
 
         return response 

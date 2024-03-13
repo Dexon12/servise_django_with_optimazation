@@ -4,7 +4,8 @@ from celery import shared_task
 from django.db.models import F
 from celery_singleton import Singleton
 from django.db import transaction
-
+from django.core.cache import cache
+from django.conf import settings
 
 @shared_task(base=Singleton) # Для того чтобы если пользователь спамит однотипными задачами учитывалась только последняя
 def set_price(subscription_id): # Нельзя просто передать объект Subscription, потому что за то время пока обхект хранится в очереди объект может уже измениться и в ьд будет уже в другом виде
@@ -24,6 +25,7 @@ def set_price(subscription_id): # Нельзя просто передать о�
         
         subscription.price = subscription.annotated_price
         subscription.save()
+    cache.delete(settings.PRICE_CACHE_NAME)
 
 @shared_task(base=Singleton) # Для того чтобы если пользователь спамит однотипными задачами учитывалась только последняя
 def set_comment(subscription_id): # Нельзя просто передать объект Subscription, потому что за то время пока обхект хранится в очереди объект может уже измениться и в ьд будет уже в другом виде
@@ -37,3 +39,4 @@ def set_comment(subscription_id): # Нельзя просто передать �
         # new_price = (subscription.service.full_price - subscription.service.full_price * subscription.plan.discount_percent / 100)
         subscription.comment = str(datetime.datetime.now())
         subscription.save()
+        cache.delete(settings.PRICE_CACHE_NAME)
