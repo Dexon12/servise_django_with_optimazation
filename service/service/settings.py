@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    'cachalot', # Готовый кэш бд, он отменяет запросы если ничего не изменилось и инвалидирует если что то изменилось
 
     'clients.apps.ClientsConfig',
     'services.apps.ServicesConfig'
@@ -155,5 +157,7 @@ CACHES = {
     }
     }
 }
+
+
 
 PRICE_CACHE_NAME = 'price_cache'
